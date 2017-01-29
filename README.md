@@ -6,4 +6,4 @@ This repository contains project files and lecture notes for Udacity's Self-Driv
 
 - Project 1: Finding Lane Lines (Intro to Computer Vision)
 - Project 2: Traffic Sign Classifier (Deep Learning)
-- Project 3: Behavioral Cloning(Keras)
+- Project 3: Behavioral Cloning (Keras)
