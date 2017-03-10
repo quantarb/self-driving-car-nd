@@ -260,18 +260,30 @@ def find_pixels(binary_warped, leftx, lefty, rightx, righty):
 
 def radius_of_curvature(binary_warped, leftx, lefty, rightx, righty):
     # Define conversions in x and y from pixels space to meters
-    ym_per_pix = 30/720 # meters per pixel in y dimension
-    xm_per_pix = 3.7/700 # meters per pixel in x dimension
-    
+    ym_per_pix = 30 / 720  # meters per pixel in y dimension
+    xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
+
+    left_fit, right_fit = second_polynomial_fit(leftx, lefty, rightx, righty)
     ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
     y_eval = np.max(ploty)
-    # Fit new polynomials to x,y in world space
-    left_fit_cr = np.polyfit(ploty*ym_per_pix, leftx*xm_per_pix, 2)
-    right_fit_cr = np.polyfit(ploty*ym_per_pix, rightx*xm_per_pix, 2)
-    # Calculate the new radii of curvature
-    left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
-    right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+
+    left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
+    right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
     return left_curverad, right_curverad
+
+
+def vehicle_center(binary_warped, leftx, lefty, rightx, righty):
+    # meters from center
+    xm_per_pix = 3.7 / 700  # meteres per pixel in x dimension
+    screen_middel_pixel = binary_warped.shape[1] / 2
+
+    left_lane_pixel = leftx[6]    # x position for left lane
+    right_lane_pixel = rightx[6]   # x position for right lane
+    car_middle_pixel = (right_lane_pixel + left_lane_pixel) / 2
+    screen_off_center = screen_middel_pixel - car_middle_pixel
+    meters_off_center = xm_per_pix * screen_off_center
+
+    return meters_off_center
 
 
 def region_of_interest(binary_warped, leftx, lefty, rightx, righty):
