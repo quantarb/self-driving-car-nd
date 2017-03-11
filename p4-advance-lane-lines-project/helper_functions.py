@@ -129,13 +129,40 @@ def get_color_mask(img):
     return yellow | white_hsv | white_hsl | white_rgb
 
 
+def pipeline(img, s_thresh=(170, 255), sx_thresh=(20, 100)):
+    img = np.copy(img)
+    # Convert to HSV color space and separate the V channel
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(np.float)
+    l_channel = hsv[:, :, 1]
+    s_channel = hsv[:, :, 2]
+    # Sobel x
+    sobelx = cv2.Sobel(l_channel, cv2.CV_64F, 1, 0)  # Take the derivative in x
+    # Absolute x derivative to accentuate lines away from horizontal
+    abs_sobelx = np.absolute(sobelx)
+    scaled_sobel = np.uint8(255 * abs_sobelx / np.max(abs_sobelx))
+
+    # Threshold x gradient
+    sxbinary = np.zeros_like(scaled_sobel)
+    sxbinary[(scaled_sobel >= sx_thresh[0]) &
+             (scaled_sobel <= sx_thresh[1])] = 1
+
+    # Threshold color channel
+    s_binary = np.zeros_like(s_channel)
+    s_binary[(s_channel >= s_thresh[0]) & (s_channel <= s_thresh[1])] = 1
+    # Stack each channel
+    # Note color_binary[:, :, 0] is all 0s, effectively an all black image. It might
+    # be beneficial to replace this channel with something else.
+    combined_binary = np.zeros_like(sxbinary)
+    combined_binary[(s_binary == 1) | (sxbinary == 1)] = 1
+    return combined_binary
+
+
 def get_combined_mask(img, s_thresh=(170, 255), sx_thresh=(20, 100)):
 
     color_mask = get_color_mask(img)
+    combined_binary = pipeline(img)
 
-    gradient_mask = abs_sobel_thresh(img)
-
-    return color_mask | gradient_mask
+    return color_mask & combined_binary
 
 
 def get_src_and_dst(img):
@@ -267,8 +294,10 @@ def radius_of_curvature(binary_warped, leftx, lefty, rightx, righty):
     ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
     y_eval = np.max(ploty)
 
-    left_curverad = ((1 + (2*left_fit[0]*y_eval + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
-    right_curverad = ((1 + (2*right_fit[0]*y_eval + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
+    left_curverad = (
+        (1 + (2 * left_fit[0] * y_eval + left_fit[1])**2)**1.5) / np.absolute(2 * left_fit[0])
+    right_curverad = (
+        (1 + (2 * right_fit[0] * y_eval + right_fit[1])**2)**1.5) / np.absolute(2 * right_fit[0])
     return left_curverad, right_curverad
 
 
@@ -277,8 +306,8 @@ def vehicle_center(binary_warped, leftx, lefty, rightx, righty):
     xm_per_pix = 3.7 / 700  # meteres per pixel in x dimension
     screen_middel_pixel = binary_warped.shape[1] / 2
 
-    left_lane_pixel = leftx[6]    # x position for left lane
-    right_lane_pixel = rightx[6]   # x position for right lane
+    left_lane_pixel = leftx[0]    # x position for left lane
+    right_lane_pixel = rightx[0]   # x position for right lane
     car_middle_pixel = (right_lane_pixel + left_lane_pixel) / 2
     screen_off_center = screen_middel_pixel - car_middle_pixel
     meters_off_center = xm_per_pix * screen_off_center
@@ -307,3 +336,6 @@ def region_of_interest(binary_warped, leftx, lefty, rightx, righty):
     cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
 
     return color_warp
+
+
+
